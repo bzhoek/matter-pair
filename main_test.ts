@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { generateManualPairingCode } from "./main.ts";
+import { generateManualPairingCode, generateVerhoeffChecksum} from "./main.ts";
 
 // https://github.com/project-chip/connectedhomeip/issues/34567
 // version < 8 (3 bits)
@@ -11,6 +11,11 @@ Deno.test(function generateTest() {
   const discriminator = 3840;
   const pairingCode = generateManualPairingCode(discriminator, passCode);
   assertEquals("3497011233", pairingCode);
+});
+
+Deno.test(function checksumTest() {
+  const result = generateVerhoeffChecksum("236");
+  assertEquals(3, result);
 });
 
 Deno.test(function stepsTest() {
