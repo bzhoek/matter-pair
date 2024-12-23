@@ -54,6 +54,25 @@ export function generateManualPairingCode(discriminator: number, passcode: numbe
   return first.toString() + two_to_six.toString() + seven_to_ten.toString();
 }
 
+export function packPayloadBits(
+  version: bigint,
+  vendorId: bigint,
+  productId: bigint,
+  flow: bigint,
+  discovery: bigint,
+  discriminator: bigint,
+  passcode: bigint,
+) {
+  let packed = passcode;
+  packed = packed << 12n | discriminator;
+  packed = packed <<  8n | discovery;
+  packed = packed <<  2n | flow;
+  packed = packed << 16n | productId;
+  packed = packed << 16n | vendorId;
+  packed = packed <<  3n | version;
+  return packed;
+}
+
 export function base38encode(number: bigint): string {
   let result = "";
   for (let i = 11; i > 0; i -= 3) {
