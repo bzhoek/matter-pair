@@ -4,14 +4,15 @@ import {
   base38encode
 } from "./main.ts";
 
-function appendReversed(number: bigint, append: bigint, count: number) {
+function reverseBytes(number: bigint, count: number) {
+  let result = 0n;
   while (count) {
-    number = (number << 1n) | (append & 1n);
-    append = append >> 1n;
+    result = number & 0xffn | (result << 8n);
+    number = number >> 8n;
     count--;
   }
 
-  return number;
+  return result;
 }
 
 function packBits(
@@ -23,73 +24,70 @@ function packBits(
   discriminator: bigint,
   passcode: bigint,
 ) {
-  let packed = 0n;
-  packed = appendReversed(packed, version, 3);
-  packed = appendReversed(packed, vendorId, 16);
-  packed = appendReversed(packed, productId, 16);
-  packed = appendReversed(packed, flow, 2);
-  packed = appendReversed(packed, discovery, 8);
-  packed = appendReversed(packed, discriminator, 12);
-  packed = appendReversed(packed, passcode, 27);
-  packed = appendReversed(packed, 0n, 4);
+  let packed = version;
+  packed = vendorId << 3n | packed;
+  packed = productId << 19n | packed;
+  packed = flow << 35n | packed;
+  packed = discovery << 37n | packed;
+  packed = discriminator << 45n | packed;
+  packed = passcode << 57n | packed;
   return packed;
 }
 
 describe("bitpacking", () => {
-  it("version", () => {
-    const result = appendReversed(0n, 0b011n, 3);
-    expect(result).toBe(0b110n);
-  });
   it("vendor", () => {
-    const result = appendReversed(0b110n, 0x3333n, 16);
-    expect(result.toString(16)).toBe("6cccc");
-    expect(result.toString(2)).toBe("1101100110011001100");
+    const result = 0x3333n << 3n | 0b000n;
+    expect(result.toString(16)).toBe("19998");
+    expect(result.toString(2)).toBe("11001100110011000");
   });
   it("product", () => {
-    const result = appendReversed(0x6ccccn, 0xccccn, 16);
-    expect(result.toString(16)).toBe("6cccc3333");
+    const result = 0xccccn << 19n | 0x19998n;
+    expect(result.toString(16)).toBe("666619998");
+    expect(result.toString(2)).toBe("11001100110011000011001100110011000");
   });
   it("flow", () => {
-    const result = appendReversed(0x6cccc3333n, 0n, 2);
-    expect(result.toString(2)).toBe("1101100110011001100001100110011001100");
-    expect(result.toString(16)).toBe("1b3330cccc");
+    const result = 0b00n << 35n | 0x666619998n;
+    expect(result.toString(16)).toBe("666619998");
+    expect(result.toString(2)).toBe("11001100110011000011001100110011000");
   });
   it("discovery", () => {
-    const result = appendReversed(0x1b3330ccccn, 0n, 8);
-    expect(result.toString(2)).toBe("110110011001100110000110011001100110000000000");
-    expect(result.toString(16)).toBe("1b3330cccc00");
+    const result = 0b00000000n << 37n | 0x666619998n;
+    expect(result.toString(16)).toBe("666619998");
+    expect(result.toString(2)).toBe("11001100110011000011001100110011000");
   });
   it("discriminator", () => {
-    const result = appendReversed(0x1b3330cccc00n, 0x699n, 12);
-    expect(result.toString(2)).toBe("110110011001100110000110011001100110000000000100110010110");
-    expect(result.toString(16)).toBe("1b3330cccc00996");
+    const result = 0x669n << 45n | 0x666619998n;
+    expect(result.toString(16)).toBe("cd200666619998");
+    expect(result.toString(2)).toBe("11001101001000000000011001100110011000011001100110011000");
   });
   it("passcode", () => {
-    const result = appendReversed(0x1b3330cccc00996n, 0x5ffffffn, 27);
-    expect(result.toString(2)).toBe("110110011001100110000110011001100110000000000100110010110111111111111111111111111101");
-    expect(result.toString(16)).toBe("d99986666004cb7fffffd");
-  });
-  it("padding", () => {
-    const result = appendReversed(0xd99986666004cb7fffffdn, 0x0n, 4);
-    expect(result.toString(2)).toBe("1101100110011001100001100110011001100000000001001100101101111111111111111111111111010000");
-    expect(result.toString(2).length).toBe(88);
-    expect(result.toString(16)).toBe("d99986666004cb7fffffd0");
+    const result = 0x3ffffffn << 57n | 0xcd200666619998n;
+    expect(result.toString(16)).toBe("7fffffecd200666619998");
+    expect(result.toString(2)).toBe("11111111111111111111111111011001101001000000000011001100110011000011001100110011000");
   });
   it("packs test bits", () => {
-    const result = packBits(0b0n, 0x3333n, 0xccccn, 0n, 0n, 0x699n, 0x3ffffffn);
-    expect(result.toString(2)).toBe("1100110011001100001100110011001100000000001001100101101111111111111111111111111100000");
-    expect(result.toString(2).length).toBe(85);
-    expect(result.toString(16)).toBe("199986666004cb7fffffe0");
+    const result = packBits(0b0n, 0x3333n, 0xccccn, 0n, 0n, 0x669n, 0x3ffffffn);
+    expect(result.toString(16)).toBe("7fffffecd200666619998");
+    expect(result.toString(2)).toBe("11111111111111111111111111011001101001000000000011001100110011000011001100110011000");
+    expect(result.toString(2).length).toBe(83);
+    let reversed = reverseBytes(result, 11);
+    expect(reversed.toString(16)).toBe("989961660620cdfeffff07");
   });
   it("packs food bits", () => {
-    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000010n, 0xF00n, 20202021n);
-    expect(result.toString(2)).toBe("1011000000001111011111110101001100010000000000000011111010010001000010001011001000000");
-    expect(result.toString(2).length).toBe(85);
-    expect(result.toString(16)).toBe("1601efea620007d2211640");
+    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000000n, 0xF00n, 20202021n);
+    expect(result.toString(16)).toBe("268844be0000657f78068");
+    expect(result.toString(2)).toBe("1001101000100001000100101111100000000000000000011001010111111101111000000001101000");
+    expect(result.toString(2).length).toBe(82);
+    let reversed = reverseBytes(result, 11);
+    expect(reversed.toString(16)).toBe("6880f7570600e04b846802");
   });
   it("encodes", () => {
-    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000010n, 3840n, 20202021n);
-    // expect(base38encode(0xef0116n)).toBe("1YZ2U3NH4S6NTFNU8");
-    // expect(base38encode(result << 8n)).toBe("1YZ2U3NH4S6NTFNU8");
+    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000000n, 0xF00n, 20202021n);
+    let reversed = reverseBytes(result, 11);
+    reversed = reversed >> 64n & 0xffffffn;
+    expect(reversed.toString(16)).toBe("6880f7");
+    let number = ((reversed & 0xffn) << 16n) | ((reversed >> 16n) & 0xffn) | (reversed & 0xff00n)
+    expect(number.toString(16)).toBe("f78068");
+    expect(base38encode(number)).toBe("2XMT7R4100KA0648G00");
   })
 });
