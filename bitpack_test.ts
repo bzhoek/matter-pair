@@ -1,5 +1,8 @@
 import { describe, it } from "jsr:@std/testing/bdd";
 import { expect } from "jsr:@std/expect";
+import {
+  base38encode
+} from "./main.ts";
 
 function appendReversed(number: bigint, append: bigint, count: number) {
   while (count) {
@@ -73,15 +76,20 @@ describe("bitpacking", () => {
     expect(result.toString(16)).toBe("d99986666004cb7fffffd0");
   });
   it("packs test bits", () => {
-    const result = packBits(0b011n, 0x3333n, 0xccccn, 0n, 0n, 0x699n, 0x5ffffffn);
-    expect(result.toString(2)).toBe("1101100110011001100001100110011001100000000001001100101101111111111111111111111111010000");
-    expect(result.toString(2).length).toBe(88);
-    expect(result.toString(16)).toBe("d99986666004cb7fffffd0");
+    const result = packBits(0b0n, 0x3333n, 0xccccn, 0n, 0n, 0x699n, 0x3ffffffn);
+    expect(result.toString(2)).toBe("1100110011001100001100110011001100000000001001100101101111111111111111111111111100000");
+    expect(result.toString(2).length).toBe(85);
+    expect(result.toString(16)).toBe("199986666004cb7fffffe0");
   });
   it("packs food bits", () => {
-    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000100n, 3840n, 20202021n);
-    expect(result.toString(2)).toBe("1011000000001111011111110101001100001000000000000011111010010001000010001011001000000");
+    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000010n, 0xF00n, 20202021n);
+    expect(result.toString(2)).toBe("1011000000001111011111110101001100010000000000000011111010010001000010001011001000000");
     expect(result.toString(2).length).toBe(85);
-    expect(result.toString(16)).toBe("1601efea610007d2211640");
+    expect(result.toString(16)).toBe("1601efea620007d2211640");
   });
+  it("encodes", () => {
+    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000010n, 3840n, 20202021n);
+    // expect(base38encode(0xef0116n)).toBe("1YZ2U3NH4S6NTFNU8");
+    // expect(base38encode(result << 8n)).toBe("1YZ2U3NH4S6NTFNU8");
+  })
 });
