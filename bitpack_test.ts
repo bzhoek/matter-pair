@@ -1,7 +1,8 @@
 import { describe, it } from "jsr:@std/testing/bdd";
 import { expect } from "jsr:@std/expect";
 import {
-  base38encode
+  base38encode,
+  base38encodeChunk
 } from "./main.ts";
 
 function reverseBytes(number: bigint, count: number) {
@@ -85,9 +86,15 @@ describe("bitpacking", () => {
     const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000000n, 0xF00n, 20202021n);
     let reversed = reverseBytes(result, 11);
     reversed = reversed >> 64n & 0xffffffn;
-    expect(reversed.toString(16)).toBe("6880f7");
+    expect(reversed).toBe(0x6880f7n);
     let number = ((reversed & 0xffn) << 16n) | ((reversed >> 16n) & 0xffn) | (reversed & 0xff00n)
-    expect(number.toString(16)).toBe("f78068");
-    expect(base38encode(number)).toBe("2XMT7R4100KA0648G00");
+    expect(number).toBe(0xf78068n);
+    expect(base38encodeChunk(number)).toBe("2XMT7");
+  })
+  it("encodes as well", () => {
+    const result = packBits(0n, 0xF00Dn, 0xCAFEn, 0n, 0b00000000n, 0xF00n, 20202021n);
+    expect(result).toBe(0x268844be0000657f78068n);
+    let payload = base38encode(result);
+    expect(payload).toBe("2XMT7R4100KA0648G00");
   })
 });

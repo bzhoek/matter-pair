@@ -53,3 +53,34 @@ export function generateManualPairingCode(discriminator: number, passcode: numbe
   const seven_to_ten = passcode >> 14;
   return first.toString() + two_to_six.toString() + seven_to_ten.toString();
 }
+
+export function base38encode(number: bigint): string {
+  let result = "";
+  for (let i = 11; i > 0; i -= 3) {
+    const chunk = number & 0xffffffn;
+    switch (i) {
+      case 1:
+        result += base38encodeChunk(chunk, 2);
+        break;
+      case 2:
+        result += base38encodeChunk(chunk, 4);
+        break;
+      default:
+        result += base38encodeChunk(chunk, 5);
+        break;
+    }
+    number = number >> 24n;
+  }
+  return result
+}
+
+export function base38encodeChunk(chunk: bigint, len: number = 5): string {
+  const base38 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-.";
+  let result = "";
+  while (chunk > 0) {
+    const remainder = Number(chunk % 38n);
+    result += base38[remainder];
+    chunk = chunk / 38n;
+  }
+  return result + "0".repeat(len - result.length);
+}
